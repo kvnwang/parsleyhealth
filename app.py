@@ -1,11 +1,11 @@
 from flask import Flask, jsonify, request
-from patients import Patient
+from patient import PatientDB
 import json
 import string
 import random
 app = Flask(__name__)
 
-patients=Patient()
+patients=PatientDB()
 
 @app.route('/')
 def hello_world():

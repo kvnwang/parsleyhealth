@@ -5,8 +5,7 @@ import functools
 from dateutil.relativedelta import relativedelta
 
 
-class Patient:
-
+class PatientDB:
     def db_connect(self):
         conn = sqlite3.connect('data/database.db')
         conn.row_factory = sqlite3.Row
@@ -21,11 +20,9 @@ class Patient:
         conn.set_trace_callback(print)
         return conn
 
-
     def db_close(self, conn):
         conn.commit()
         conn.close()
-
 
 
     def get_all(self):
@@ -65,17 +62,13 @@ class Patient:
     def update_patient(self, select_id, data):
         conn = self.db_connect()
         try:
-            print(select_id)
             data.append(select_id)
             user_data=tuple(data)
-            print(user_data)
             c = conn.cursor()
-            print (user_data[14])
-            new_daata = (user_data[0], user_data[1], user_data[2], user_data[3], user_data[4], user_data[5], user_data[6],
+            new_data = (user_data[0], user_data[1], user_data[2], user_data[3], user_data[4], user_data[5], user_data[6],
                          user_data[7], user_data[8], user_data[9], user_data[10], user_data[11], user_data[12], user_data[13], user_data[14])
-            print (len(data))
             c.execute('''UPDATE person SET first_name=?, middle_name=?, last_name=?, email=?, dob=?, gender=?, status=?, terms_accepted=?, terms_accepted_at=?, address_street=?, address_city=?, address_state=?, address_zip=?, phone=? WHERE id = ?''',
-                      new_daata)
+                      new_data)
             value=c.fetchone()
             conn.commit()
             conn.close()
@@ -118,15 +111,12 @@ class Patient:
         end_date = datetime.today()
         difference = end_date - start_date
         difference_in_years = relativedelta(end_date, start_date).years
-        print(difference_in_years)
         return difference_in_years
 
     def get_count(self):
         conn = self.db_connect()
         conn.row_factory=None
         c = conn.cursor()
-        rows = []
-        c.execute(
-            "SELECT count(*) FROM person")
+        c.execute("SELECT count(*) FROM person")
         return c.fetchone()[0]
 
