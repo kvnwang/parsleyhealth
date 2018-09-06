@@ -3,7 +3,7 @@ from patient import PatientDB
 import string
 import random
 import datetime
-
+import math
 app = Flask(__name__)
 
 patients=PatientDB()
@@ -25,10 +25,13 @@ def get_patients():
     start=10*(int(page_num)-1)
     pag_patients=patients.get_all_patients_page(page_num)
     end=10*(page_num-1)+len(pag_patients)-1
+    total_pages=int(math.ceil(count/10))
     if pag_patients==None:  pag_patients={}
     return jsonify({
-        "count": count, "start": start, "end": end, "limit": 10, "page": page_num,
-        "data": pag_patients
+        "data": pag_patients,
+        "page": page_num, "per_page": 10, "total": count,
+         "total_pages" : total_pages,
+
     })
 
 
