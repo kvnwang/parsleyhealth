@@ -1,8 +1,9 @@
 from flask import Flask, jsonify, request
 from patient import PatientDB
-import json
 import string
 import random
+import datetime
+
 app = Flask(__name__)
 
 patients=PatientDB()
@@ -19,15 +20,14 @@ def hello_world():
 # api/patients?page=_
 @app.route('/api/v1/patients')
 def get_patients():
-    page_num=request.args.get('page') if request.args.get('page')!=None else 1
+    page_num=int(request.args.get('page')) if request.args.get('page')!=None else 1
+    count=patients.get_count()
+    start=10*(int(page_num)-1)
     pag_patients=patients.get_all_patients_page(page_num)
-    print(pag_patients)
-    page_num=int(page_num)
+    end=10*(page_num-1)+len(pag_patients)-1
+    if pag_patients==None:  pag_patients={}
     return jsonify({
-        "start": 10*(int(page_num)-1),
-        "limit": 10,
-        "end": 10*(page_num-1)+len(pag_patients)-1,
-        "page": page_num,
+        "count": count, "start": start, "end": end, "limit": 10, "page": page_num,
         "data": pag_patients
     })
 
@@ -42,10 +42,11 @@ def get_patients():
 def get_records():
     record_id = request.args.get('id')
     if record_id!=None:
-        records=patients.get_patient(record_id)
-        return jsonify(records)
+        patient=patients.get_patient(record_id)
+        if patient==None: patient={}
+        return jsonify(patient)
     else:
-        return jsonify(success=False)
+        return jsonify({})
 
 
 
@@ -53,11 +54,11 @@ def get_records():
 
 
 # updates patient records based on user id, dob, email
-# WORKS
 @app.route('/api/v1/patient/update', methods=['PATCH'])
 def update():
     args = request.args
     user_id = args.get('id')
+
     fname, mname, lname = args.get('fname'), args.get('mname'), args.get('lname')
     email, dob, gender = args.get('email'), args.get('dob'), args.get('gender')
     status, terms, date_accpted = args.get('status'), args.get('terms'), args.get('date_accepted')
@@ -71,35 +72,29 @@ def update():
         year, month, day = int(date[0]), int(date[1]), int(date[2])
         if patients.get_age(year, month, day)<8:
             return jsonify(success=False)
+    if valid_date==False:
+        return jsonify(success=False)
     if user_id==None:
         return jsonify(success=False)
     else:
         p_data=patients.get_patient(user_id)
-        print (p_data)
-        keys=['first_name', 'middle_name', 'last_name', 'email', 'dob', 'gender', 'status', 'terms_accepted', 'terms_accepted_at', 'address_street',
+        keys=['first_name', 'middle_name', 'last_name', 'email', 'dob', 'gender',
+              'status', 'terms_accepted', 'terms_accepted_at', 'address_street',
               'address_city', 'address_state', 'address_zip', 'phone']
-        values=[]
+        updated_patient=[]
         for key in keys:
-            values.append(p_data[key])
+            updated_patient.append(p_data[key])
+        attributes=[
+            fname, mname, lname, email, dob, gender, status, terms,
+            date_accpted, street, state, zip, phone
+        ]
+        for i, value in enumerate(attributes):
+            if value!=None: updated_patient[i]=value
 
+        if valid_date(updated_patient[4])==False:
+            return jsonify(success=False)
 
-        if fname!=None: values[0]=fname
-        if mname!=None: values[1]=fname
-        if lname!=None: values[2]=lname
-        if email!=None: values[3]=email
-        if dob!=None: values[4]=dob
-        if gender!=None: values[5]=gender
-        if status!=None: values[6]=status
-        if terms!=None: values[7]=terms
-        if date_accpted!=None: values[8]=date_accpted
-        if args.get('street')!=None:
-            values[9]=street
-        if state!=None: values[10]=state
-        if zip!=None: values[11]=zip
-        if phone!=None: values[12]=phone
-        print('values ',values)
-        json=patients.update_patient(user_id, values)
-        print(json)
+        json=patients.update_patient(user_id, updated_patient)
         return jsonify(success=True)
 
 
@@ -108,16 +103,14 @@ def update():
 
 # # deletes existing patient records
 # DELETE URL ROUTE:  /api/patient/delete?id=_
-# WORKS
 @app.route('/api/v1/patient/delete', methods=['DELETE'])
 def delete_user():
-    try:
-        user_id = request.args.get('id')
+    user_id = request.args.get('id')
+    if user_id==None:
+        return jsonify(success=False)
+    else:
         patients.delete_patient(user_id)
         return jsonify(success=True)
-    except:
-        return jsonify(success=False)
-
 
 
 
@@ -137,33 +130,36 @@ def create():
 
         date = dob.split("-")
         year, month, day = int(date[0]), int(date[1]), int(date[2])
-
+        print(dob)
+        if valid_date(dob)==False:
+            return jsonify(success=False)
         if patients.get_age(year, month, day) < 8:
             return jsonify(success=False)
         else:
             patients.create_patient(new_patient_data)
             return jsonify(success=True)
+
     except:
         return jsonify(success=False)
 
 
 
 
-
-
-
-
-
 # # returns patient's age based on date of birth
 # URL ROUTE:  /api/age?year= &month= &day=
-# DONE
-
 @app.route('/api/v1/patient/age')
 def get_age():
     args=request.args
     years= patients.get_age(int(args.get('year')), int(args.get('month')), int(args.get('day')))
-    return jsonify({"years": round(years,2)})
+    return jsonify({"years": years})
 
+
+def valid_date(str):
+    try:
+        datetime.datetime.strptime(str, '%Y-%m-%d')
+        return True
+    except ValueError:
+        return False
 
 
 
